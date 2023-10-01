@@ -17,37 +17,46 @@ pub fn get_args() -> MyResult<Config> {
         .about("Rust head")
         .arg(
             Arg::with_name("files")
-                .value_name("Files")
+                .value_name("FILE")
                 .help("Input file(s)")
                 .multiple(true)
                 .default_value("-")
-                .required(true)
                 .allow_invalid_utf8(true),
         )
         .arg(
             Arg::with_name("lines")
-                .value_name("Count")
+                .value_name("LINES")
                 .help("Number of lines")
                 .short('n')
-                .long("count")
+                .long("lines")
                 .default_value("10")
-                .takes_value(true)
                 .conflicts_with("bytes"),
         )
         .arg(
             Arg::with_name("bytes")
-                .value_name("Bytes")
+                .value_name("BYTES")
                 .help("Number of bytes")
-                .short('b')
+                .short('c')
                 .long("bytes")
                 .takes_value(true),
         )
         .get_matches();
 
+    let lines = matches
+        .value_of("lines")
+        .map(parse_positive_int)
+        .transpose()
+        .map_err(|e| format!("illegal line count -- {}", e))?;
+    let bytes = matches
+        .value_of("bytes")
+        .map(parse_positive_int)
+        .transpose()
+        .map_err(|e| format!("illegal byte count -- {}", e))?;
+
     Ok(Config {
         files: matches.values_of_lossy("files").unwrap(),
-        lines: matches.value_of_lossy("lines").unwrap().parse::<usize>()?,
-        bytes: Some(matches.value_of_lossy("bytes").unwrap().parse::<usize>()?),
+        lines: lines.unwrap(),
+        bytes,
     })
 }
 
@@ -59,7 +68,7 @@ pub fn run(config: Config) -> MyResult<()> {
 fn parse_positive_int(val: &str) -> MyResult<usize> {
     match val.parse() {
         Ok(n) if n > 0 => Ok(n),
-        _ => Err(From::from(val))
+        _ => Err(val.into()),
     }
 }
 
@@ -72,7 +81,7 @@ fn test_parse_positive_int() {
     let res = parse_positive_int("foo");
     assert!(res.is_err());
     assert_eq!(res.unwrap_err().to_string(), "foo".to_string());
-    
+
     let res = parse_positive_int("0");
     assert!(res.is_err());
     assert_eq!(res.unwrap_err().to_string(), "0".to_string());
