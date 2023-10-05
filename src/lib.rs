@@ -66,7 +66,17 @@ pub fn run(config: Config) -> MyResult<()> {
     for filename in config.files {
         match open(&filename) {
             Err(err) => eprintln!("{}: {}", filename, err),
-            Ok(_) => println!("Opened {}", filename),
+            Ok(mut file_buffer) => {
+                let mut line = String::new();
+                for _ in 0..config.lines {
+                    let bytes = file_buffer.read_line(&mut line)?;
+                    if bytes == 0 {
+                        break;
+                    }
+                    print!("{}", line);
+                    line.clear();
+                }
+            }
         }
     }
     Ok(())
